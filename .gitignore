@@ -191,3 +191,8 @@ ModelManifest.xml
 # Added by OneITVSO 
 *.dll
 *.exe
+
+# Intellij
+.idea
+*.iml
+target/
