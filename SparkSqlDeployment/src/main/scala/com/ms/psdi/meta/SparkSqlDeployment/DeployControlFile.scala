@@ -148,7 +148,7 @@ class DeployControlFile(sparkSession: SparkSession) {
     val getCookedFilePath = (computePath: String) => {
       // Replace '/compute/' with '/cooked/' and replace '/full/' with  /controlfile/ add c_tablename_v1.json
       var computePathNormalized = new URI(computePath + '/').normalize().toString
-      var cookedFolderPath = computePathNormalized.replaceAll("(?i)/compute/","/cooked/").replaceAll("(?i)/full/","(?i)/controlfile/")
+      var cookedFolderPath = computePathNormalized.replaceAll("(?i)/compute/","/cooked/").replaceAll("(?i)/full/","/controlfile/")
       // Picks only table name and not the schema name
       var cookedFile = cookedFolderPath + s"c_${tableEntity.name.toString.split('.').last.toLowerCase}_v1.json"
       cookedFile
