@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<checkstyle version="5.0">
+ <file name="C:\Work\Repos\PS-OMI-DAIP-DProc-MtStr-MetaStore\DeploymentManager\src\main\scala\com\ms\psdi\meta\DeploymentManager\ProviderAdapter\DeltaProviderAdapter.scala">
+  <error column="30" line="163" source="org.scalastyle.scalariform.EnsureSingleSpaceAfterTokenChecker" severity="error" message="No space after token :"/>
+  <error column="48" line="163" source="org.scalastyle.scalariform.EnsureSingleSpaceAfterTokenChecker" severity="error" message="No space after token :"/>
+  <error column="8" line="168" source="org.scalastyle.scalariform.EnsureSingleSpaceAfterTokenChecker" severity="error" message="No space after token if"/>
+  <error column="0" line="11" source="org.scalastyle.scalariform.ImportOrderChecker" severity="error" message="import.ordering.missingEmptyLine.message"/>
+  <error column="0" line="14" source="org.scalastyle.scalariform.ImportOrderChecker" severity="error" message="import.ordering.wrongGroup.message"/>
+  <error column="36" line="164" source="org.scalastyle.file.RegexChecker" severity="error" message="
+      Single Space between ')' and `{`.
+    "/>
+  <error column="37" line="167" source="org.scalastyle.file.RegexChecker" severity="error" message="
+      Single Space between ')' and `{`.
+    "/>
+  <error column="53" line="168" source="org.scalastyle.file.RegexChecker" severity="error" message="
+      Single Space between ')' and `{`.
+    "/>
+ </file>
+</checkstyle>
