@@ -149,7 +149,8 @@ class DeployControlFile(sparkSession: SparkSession) {
       // Replace '/compute/' with '/cooked/' and replace '/full/' with  /controlfile/ add c_tablename_v1.json
       var computePathNormalized = new URI(computePath + '/').normalize().toString
       var cookedFolderPath = computePathNormalized.replace("/compute/","/cooked/").replace("/full/","/controlfile/")
-      var cookedFile = cookedFolderPath + s"c_${tableEntity.name.toString}_v1.json"
+      // Picks only table name and not the schema name
+      var cookedFile = cookedFolderPath + s"c_${tableEntity.name.toString.split('.').last.toLowerCase}_v1.json"
       cookedFile
     }
     var cookedFilePath = getCookedFilePath(tableEntity.location)
@@ -161,7 +162,8 @@ class DeployControlFile(sparkSession: SparkSession) {
     }
     val tableSecurity = TableSecurity("", "")
     val tableUserProperty = TableUserProperty("Central US", "SCD-2", "Yes", "All", "SCDEndDate_isNULL")
-    val tableCF = Table(tableEntity.name, "1", true, true, "\t", "Text", "UTF-8", "None", "\n", tableEntity.schema.length.toString, tableUserProperty, fieldList)
+    // Picks only table name and not the schema name
+    val tableCF = Table(tableEntity.name.toString.split('.').last, "1", true, true, "\t", "Text", "UTF-8", "None", "\n", tableEntity.schema.length.toString, tableUserProperty, fieldList)
     val controlFile = controlfile("2099-12-31", tableCF, tableSecurity)
     val writeCF = CF(controlFile)
     implicit val formats = DefaultFormats

@@ -93,13 +93,13 @@ class ControlFileTest
     val buildContainer = BuildContainer(
       List(),
       List(SqlTable("filePath", """
-          |CREATE TABLE new_table
+          |CREATE TABLE newSchema.new_table
           |(
           | col1 int,
           | col2 string comment 'some comments here!.'
           |)
           |using delta
-          |location './external/compute/new_table/full/'
+          |location './external/compute/newSchema/new_table/full/'
           |""".stripMargin)),
       Map.empty[String, String]
     )
@@ -117,7 +117,7 @@ class ControlFileTest
     // Act.
     this.main.startControlFilesCreation(buildContainer)
     // Assert.
-    val controlPathFile = "./external/cooked/new_table/controlfile/c_new_table_v1.json"
+    val controlPathFile = "./external/cooked/newSchema/new_table/controlfile/c_new_table_v1.json"
     val jsonString: String = Source.fromFile(controlPathFile).mkString
     val CFContainer: CF = JsonHelper.fromJSON[CF](jsonString)
     Assert.assertTrue(CFContainer == CFToAssert)
