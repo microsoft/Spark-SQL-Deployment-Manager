@@ -33,23 +33,13 @@ class DeployTable(sparkSession: SparkSession) {
     )(this.sparkSession)
 
     this.sparkSession.sql(s"desc extended ${tableEntity.name}").show()
-    val providerAdapterWrapper = ProviderAdapterFactory.getProviderAdapter(
+    val providerAdapterFactory = ProviderAdapterFactory.getProviderAdapter(
       tableEntity.provider.toLowerCase(Locale.ENGLISH)
     )
-    providerAdapter = providerAdapterWrapper(this.sparkSession)
+    providerAdapter = providerAdapterFactory(this.sparkSession)
 
-    // ALTER SCHEMA
-    println(s"starting Alter Schema for ${tableEntity.name}")
-    providerAdapter.alterSchema(tableEntity, oldTableEntity)
-    println(s"End Alter schema for ${tableEntity.name}")
-
-    // TODO: CODE FOR PARTITION.
-    println(s"Start Partition Change for ${tableEntity.name}")
-    providerAdapter.alterPartition(tableEntity, oldTableEntity)
-    println(s"End Partition Change for ${tableEntity.name}")
-
-    // IF LOCATION OR PROVIDER CHANGED.
-    providerAdapter.changeProviderOrLocation(tableEntity, oldTableEntity)
+    // DEPLOY
+    providerAdapter.deploy(tableEntity, oldTableEntity)
   }
 
   private def getTableEntityFromScript(script: String): TableEntity = {

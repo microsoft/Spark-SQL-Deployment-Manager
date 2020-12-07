@@ -14,8 +14,31 @@ import org.apache.spark.sql.functions.col
 import scala.util.control.Breaks.{break, breakable}
 class DeltaProviderAdapter(sparkSession: SparkSession)
     extends IProviderAdapter {
-  override def alterSchema(newTable: TableEntity,
-                           oldTable: TableEntity): Unit = {
+
+  override def deploy(newTable: TableEntity, oldTable: TableEntity): Unit = {
+    this.changeProvider(newTable, oldTable)
+    this.alterSchema(newTable, oldTable)
+    this.alterPartition(newTable, oldTable)
+    this.changeLocation(newTable, oldTable)
+  }
+
+  private def changeProvider(
+      newTable: TableEntity, oldTable: TableEntity
+  ): Unit = {
+    if (
+        !newTable.provider.equalsIgnoreCase(
+            oldTable.provider
+        ) && newTable.location == oldTable.location
+    ) {
+      throw new NotSupportedException(
+          s"Cannot change provider from ${oldTable.provider} to ${newTable.provider}"
+      )
+    }
+  }
+
+  private def alterSchema(
+      newTable: TableEntity, oldTable: TableEntity
+  ): Unit = {
     implicit val formats: Formats = DefaultFormats
 
     val newTableSchema = newTable.schema
@@ -29,32 +52,36 @@ class DeltaProviderAdapter(sparkSession: SparkSession)
       }
       column
     }
+
     newTableSchema.foreach(newField => {
       breakable {
 
         // IF NEW COLUMN , CREATE COLUMN.
-        if (!oldTableSchema
-              .exists(oldField => newField.name.equalsIgnoreCase(oldField.name))) {
+        if (
+            !oldTableSchema
+              .exists(oldField => newField.name.equalsIgnoreCase(oldField.name))
+        ) {
           this.sparkSession.sql(
-            s"ALTER TABLE ${newTable.name} ADD COLUMNS(${columnWithMetadata(newField)})"
+              s"ALTER TABLE ${newTable.name} ADD COLUMNS(${columnWithMetadata(newField)})"
           )
           break;
         }
 
-        val oldField = oldTableSchema.find(x => x.name.equalsIgnoreCase(newField.name)).get
+        val oldField =
+          oldTableSchema.find(x => x.name.equalsIgnoreCase(newField.name)).get
 
         // IF OLD COLUMN AND DATA TYPE CHANGED, OVERWRITE TABLE.
         if (!oldField.datatype.equalsIgnoreCase(newField.datatype)) {
           this.checkTypeCompatibility(
-            oldTable.name,
-            oldField.name,
-            newField.datatype
+              oldTable.name,
+              oldField.name,
+              newField.datatype
           )
           this.sparkSession.read
             .table(newTable.name)
             .withColumn(
-              newField.name,
-              col(newField.name).cast(newField.datatype)
+                newField.name,
+                col(newField.name).cast(newField.datatype)
             )
             .write
             .format(newTable.provider)
@@ -76,20 +103,68 @@ class DeltaProviderAdapter(sparkSession: SparkSession)
         val newComment = getComment(newField)
         if (oldComment != newComment) {
           this.sparkSession.sql(
-            s"ALTER TABLE ${newTable.name} CHANGE ${newField.name} ${columnWithMetadata(newField)}"
+              s"ALTER TABLE ${newTable.name} CHANGE ${newField.name} ${columnWithMetadata(newField)}"
           )
         }
       }
     })
   }
 
-  override def changeProviderOrLocation(newTable: TableEntity,
-                                        oldTable: TableEntity): Unit = {
-    if (!newTable.provider.equalsIgnoreCase(oldTable.provider) && newTable.location == oldTable.location) {
+  private def alterPartition(
+      newTable: TableEntity, oldTable: TableEntity
+  ): Unit = {
+
+    var newTablePartitions = newTable.partitions
+    var oldTablePartitions = oldTable.partitions
+    var newTableSchema     = newTable.schema
+
+    // Check if any of the partition column is not in list of columns
+    newTablePartitions.foreach(partitionColumn => {
+      if (
+          !newTableSchema
+            .exists(Field => partitionColumn.equalsIgnoreCase(Field.name))
+      ) {
+        throw new Exception(
+            "Cannot partition table by a column that does not exist"
+        )
+      }
+    })
+
+    // Check if all columns being used as partition columns - Not Supported
+    if (newTablePartitions.length == newTable.schema.length) {
       throw new NotSupportedException(
-        s"Cannot change provider from ${oldTable.provider} to ${newTable.provider}"
+          "Cannot use all columns for Partition columns"
       )
     }
+    // Compares 2 string iterators in order ignores case sensitivity
+    def orderedComparator(seq1: Seq[String], seq2: Seq[String]): Boolean = {
+      if (seq1.length != seq2.length) {
+        return false
+      }
+      for (index <- 0 to seq1.length - 1) {
+        if (!seq1(index).equalsIgnoreCase(seq2(index))) {
+          return false
+        }
+      }
+      true
+
+    }
+    // Change in columns or their ordering
+    if (orderedComparator(newTablePartitions, oldTablePartitions) == false) {
+      this.sparkSession.read
+        .table(newTable.name)
+        .write
+        .format(newTable.provider)
+        .mode("overwrite")
+        .option("overwriteSchema", "true")
+        .partitionBy(newTablePartitions: _*) // New Columns to partition by
+        .saveAsTable(newTable.name)
+    }
+  }
+
+  private def changeLocation(
+      newTable: TableEntity, oldTable: TableEntity
+  ): Unit = {
     // Adding / at the end to make it a folder path and not file. The normalize function will take care of multiple slashes
     var oldLocationObject = new URI(oldTable.location + '/')
     var newLocationObject = new URI(newTable.location + '/')
@@ -97,7 +172,11 @@ class DeltaProviderAdapter(sparkSession: SparkSession)
     var oldNormalizedPath = oldLocationObject.normalize()
     var newNormalizedPath = newLocationObject.normalize()
 
-    if (!newNormalizedPath.toString().equalsIgnoreCase(oldNormalizedPath.toString())) {
+    if (
+        !newNormalizedPath
+          .toString()
+          .equalsIgnoreCase(oldNormalizedPath.toString())
+    ) {
       try {
         val files = DBUtilsAdapter.get.fs.ls(newTable.location)
         if (files.length != 0) {
@@ -111,7 +190,7 @@ class DeltaProviderAdapter(sparkSession: SparkSession)
 
       // CHANGING LOCATION.
       val randomGuid = randomUUID.toString.replace("-", "")
-      val tempTable = s"${newTable.name}_$randomGuid"
+      val tempTable  = s"${newTable.name}_$randomGuid"
       this.sparkSession
         .sql(s"ALTER TABLE ${newTable.name} RENAME TO $tempTable")
       this.sparkSession.sql(newTable.script)
@@ -125,9 +204,9 @@ class DeltaProviderAdapter(sparkSession: SparkSession)
     }
   }
 
-  private def checkTypeCompatibility(tableName: String,
-                                     columnName: String,
-                                     dataType: String) = {
+  private def checkTypeCompatibility(
+      tableName: String, columnName: String, dataType: String
+  ) = {
     val nextDf = this.sparkSession.sql(s"""
          |SELECT $columnName
          |FROM $tableName
@@ -137,52 +216,8 @@ class DeltaProviderAdapter(sparkSession: SparkSession)
     if (nextDf.count >= 1) {
       val incompatibleRow = nextDf.first()
       throw new Exception(
-        s"Incompatible Types. Cannot cast  $tableName.$columnName to $dataType - Error occurred for value - ${incompatibleRow(0).toString}"
+          s"Incompatible Types. Cannot cast  $tableName.$columnName to $dataType - Error occurred for value - ${incompatibleRow(0).toString}"
       )
     }
   }
-
-  override def alterPartition(newTable: TableEntity, oldTable: TableEntity): Unit = {
-
-    var newTablePartitions = newTable.partitions
-    var oldTablePartitions = oldTable.partitions
-    var newTableSchema = newTable.schema
-
-    // Check if any of the partition column is not in list of columns
-    newTablePartitions.foreach(partitionColumn => {
-      if (!newTableSchema.exists(Field => partitionColumn.equalsIgnoreCase(Field.name))) {
-        throw new Exception("Cannot partition table by a column that does not exist")
-      }
-    })
-
-    // Check if all columns being used as partition columns - Not Supported
-    if(newTablePartitions.length == newTable.schema.length) {
-      throw new NotSupportedException("Cannot use all columns for Partition columns")
-    }
-    // Compares 2 string iterators in order ignores case sensitivity
-    def orderedComparator(seq1:Seq[String], seq2:Seq[String]): Boolean = {
-      if (seq1.length != seq2.length){
-       return false
-      }
-      for(index <- 0 to seq1.length-1){
-        if(!seq1(index).equalsIgnoreCase(seq2(index))){
-        return false
-        }
-      }
-      true
-
-    }
-    // Change in columns or their ordering
-    if(orderedComparator(newTablePartitions, oldTablePartitions) == false) {
-      this.sparkSession.read
-        .table(newTable.name)
-        .write
-        .format(newTable.provider)
-        .mode("overwrite")
-        .option("overwriteSchema", "true")
-        .partitionBy(newTablePartitions: _*) // New Columns to partition by
-        .saveAsTable(newTable.name)
-    }
-  }
-
 }
