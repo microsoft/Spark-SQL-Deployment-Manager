@@ -10,6 +10,5 @@
     <module>common</module>
     <module>buildsql</module>
     <module>DeploymentManager</module>
-    <module>SparkSqlDeployment</module>
   </modules>
 </project>
