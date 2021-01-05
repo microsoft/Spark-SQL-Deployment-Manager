@@ -553,6 +553,65 @@ class SchemaTest
     // Act.
 
     this.main.startDeployment(buildContainer)
+
+    // Assert.
+    Assert.assertTrue(1 == 1)
+  }
+
+  test("Internally, use the overwrite schema function multiple times") {
+    // Arrange
+    val oldTable =
+      """
+        |CREATE TABLE SchemaOverRide_Test
+        |(
+        | col1 string NOT NULL,
+        | col2 long NOT NULL,
+        |  col3 int
+        |)
+        | using delta
+        |
+        | location './external/SchemaOverRide_Test'
+        |""".stripMargin
+    this.createTableWithStubShowScript("SchemaOverRide_Test", oldTable)
+    this.spark.sql(
+      """
+        |INSERT INTO SchemaOverRide_Test values("a",12.5,1)
+        |""".stripMargin
+    )
+
+    val buildContainer = BuildContainer(List(),
+      List(SqlTable("filePath",
+        """
+          |CREATE TABLE SchemaOverRide_Test
+          |(
+          | col1 string NOT NULL,
+          | col2 int NOT NULL,
+          | col3 int
+          |)
+          |using delta
+          |location './external/SchemaOverRide_Test/'
+          |""".stripMargin))
+      , Map.empty[String, String])
+
+    val buildContainerNew = BuildContainer(List(),
+      List(SqlTable("filePath",
+        """
+          |CREATE TABLE SchemaOverRide_Test
+          |(
+          | col1 string NOT NULL,
+          | col2 string NOT NULL,
+          | col3 int
+          |)
+          |using delta
+          |location './external/SchemaOverRide_Test/'
+          |""".stripMargin))
+      , Map.empty[String, String])
+    // Act.
+
+    this.main.startDeployment(buildContainer)
+    this.main.startDeployment(buildContainerNew)
+    this.spark.sql("select * from SchemaOverRide_Test").show()
+
     // Assert.
     Assert.assertTrue(1 == 1)
   }
