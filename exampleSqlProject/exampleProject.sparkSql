@@ -1,0 +1,11 @@
+<project>
+    <name>Example Project</name>
+    <author>Hemanth Sandrana</author>
+    <build>
+        <Include type="Predeployment">./example/Predeployment/Predeployment.scala</Include>
+        <Include type="Postdeployment">./example/Postdeployment/Postdeployment.scala</Include>
+        <Include type="schema">./example/Schema</Include>
+        <Include type="table">./example/tables</Include>
+        <Include type="values">./values.json</Include>
+    </build>
+</project>
