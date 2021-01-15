@@ -1,3 +1,5 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 package parseValidate
 
 import java.io.{File, FileWriter}

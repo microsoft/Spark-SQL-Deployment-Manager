@@ -1,3 +1,5 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 package com.ms.psdi.meta.DeploymentManager.ProviderAdapter
 
 import java.io.FileNotFoundException

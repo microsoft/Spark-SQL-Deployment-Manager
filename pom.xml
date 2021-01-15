@@ -6,6 +6,13 @@
   <name>${project.artifactId}</name>
   <description>spark based schema and table deployment project</description>
   <packaging>pom</packaging>
+  <licenses>
+    <license>
+      <name>MIT License</name>
+      <url>http://www.opensource.org/licenses/mit-license.php</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
   <modules>
     <module>common</module>
     <module>buildsql</module>
