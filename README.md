@@ -1,4 +1,5 @@
 [![Build Status](https://microsoftit.visualstudio.com/OneITVSO/_apis/build/status/Compliant/Core%20Services%20Engineering%20and%20Operations/Corporate%20Functions%20Engineering/Professional%20Services/PS%20Data%20And%20Insights/Data%20and%20Integration%20Platforms/PSDI%20Data%20Processing/PS-OMI-DAIP-DProc-MtStr-MetaStore_Build?branchName=master)](https://microsoftit.visualstudio.com/OneITVSO/_build/latest?definitionId=29958&branchName=master)
+[![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/microsoft/Spark-SQL-Deployment-Manager/blob/main/LICENSE)
 # Build and Deploy Spark SQL Tables.
   - Build and Deploy Spark SQL tables incrementally. Checks for syntax errors before checking in the code to main and Deploy the changes using Continuous Deployment. 
   - This project aims to create a way to deploy spark sql tables using CI/CD and focus just on table schema changes rather than how to deploy the changes.
