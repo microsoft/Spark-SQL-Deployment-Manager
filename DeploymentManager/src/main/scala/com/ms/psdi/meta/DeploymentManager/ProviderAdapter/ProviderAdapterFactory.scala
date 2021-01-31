@@ -13,9 +13,13 @@ object ProviderAdapterFactory {
         new DeltaProviderAdapter(sparkSession)
       return deltaProvider
     }
-
+    if (provider.equalsIgnoreCase("hive")) {
+      val deltaProvider = (sparkSession: SparkSession) =>
+        new HiveProviderAdapter(sparkSession)
+      return deltaProvider
+    }
     throw new NotImplementedException(
-      s"adapter for provider : $provider is not implemented"
+        s"adapter for provider : $provider is not implemented"
     )
   }
 }
