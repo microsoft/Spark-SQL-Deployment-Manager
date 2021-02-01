@@ -7,52 +7,29 @@ import java.util.Locale
 
 import com.databricks.backend.daemon.dbutils.FileInfo
 import com.databricks.dbutils_v1.{DBUtilsV1, DbfsUtils}
-import com.holdenkarau.spark.testing.{DataFrameSuiteBase, SharedSparkContext}
 import com.ms.psdi.meta.DeploymentManager.{DBUtilsAdapter, Main}
-import com.ms.psdi.meta.common.{BuildContainer, JsonHelper, SqlTable}
-
-import io.delta.sql.DeltaSparkSessionExtension
+import com.ms.psdi.meta.common.{BuildContainer, SqlTable}
 import org.apache.commons.io.FileUtils
+import org.apache.hadoop.fs.Path
 import org.junit.Assert
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito._
-import org.mockito.invocation.InvocationOnMock
-import org.mockito.stubbing.Answer
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 import org.scalatest.mockito.MockitoSugar
-import org.apache.spark.SparkConf
 import org.apache.spark.sql.{SparkSession, _}
-import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.delta.catalog.DeltaCatalog
-import org.apache.spark.sql.internal.{SQLConf, StaticSQLConf}
-import org.apache.spark.sql.internal.StaticSQLConf.CATALOG_IMPLEMENTATION
 
 class TestTextProvider
-    extends FunSuite with SharedSparkContext with DataFrameSuiteBase
-    with MockitoSugar with BeforeAndAfterAll {
+    extends FunSuite with MockitoSugar with BeforeAndAfterAll {
 
   lazy val main                           = Main
   var oldTableCreateScript: String        = null
+  val spark                               = SharedTestSpark.getNewSession()
   lazy val sparkSessionMock: SparkSession = spy(this.spark)
 
   val sparkWarehouseDirectoryUri = "./spark-warehouse"
   val externalDirectoryUri       = "./external"
   this.cleanUp()
-
-  override def conf: SparkConf =
-    super.conf
-      .set(
-          SQLConf.V2_SESSION_CATALOG_IMPLEMENTATION.key,
-          classOf[DeltaCatalog].getName
-      )
-      .set(
-          StaticSQLConf.SPARK_SESSION_EXTENSIONS.key,
-          classOf[DeltaSparkSessionExtension].getName
-      )
-      .set("spark.databricks.delta.schema.autoMerge.enabled", "true")
-      .set("hive.exec.dynamic.partition.mode", "nonstrict")
-      //.set("spark.sql.warehouse.dir", "c:\temp")
-      .set(CATALOG_IMPLEMENTATION.key, "hive")
+  //.set("spark.sql.warehouse.dir", "c:\temp")
 
   override def beforeAll(): Unit = {
     super.beforeAll()
@@ -62,20 +39,45 @@ class TestTextProvider
     main.getSparkSession = () => {
       this.sparkSessionMock
     }
+    spark.sql(
+        "CREATE TABLE init_hive (a int) using hive location './external/init_hive'")
+  }
+
+  def getParentUrl(): String = {
+    // derive parent url from init_hive table
+    val init_hive_tbl_script = this.spark
+      .sql(s"show create table init_hive")
+      .first()
+      .getAs[String](0)
+    val plan = this.spark.sessionState.sqlParser.parsePlan(init_hive_tbl_script)
+    val location = plan
+      .asInstanceOf[
+          org.apache.spark.sql.catalyst.plans.logical.CreateTableStatement]
+      .location
+      .get
+    val parentUrl = location.replace("external/init_hive", "")
+    parentUrl
+  }
+
+  def getAbsoluteUrl(childUrl: String): String = {
+    val parentUrl = this.getParentUrl()
+    new Path(parentUrl, childUrl).toString
   }
 
   test("Should create new table - Hive (Default text)") {
     // Arrange.
     val buildContainer = BuildContainer(
         List(),
-        List(SqlTable("filePath", """
-                                  |CREATE TABLE new_table
+        List(SqlTable("filePath",
+                s"""
+                                  |CREATE TABLE text_new_table
                                   |(
                                   | col1 int,
                                   | col2 string comment 'some comments here!.'
                                   |)
                                   |using hive
-                                  |location './external/new_table'
+                                  |location '${this.getAbsoluteUrl(
+            "./external/text_new_table")}'
                                   |""".stripMargin)),
         Map.empty[String, String]
     )
@@ -84,7 +86,7 @@ class TestTextProvider
     this.main.startDeployment(buildContainer)
 
     // Assert.
-    val tableDetails = this.spark.sql("desc extended new_table")
+    val tableDetails = this.spark.sql("desc extended text_new_table")
     Assert.assertTrue(
         tableDetails
           .filter(x => x(0).toString().equalsIgnoreCase("Provider"))
@@ -118,14 +120,14 @@ class TestTextProvider
   test("Should Change from string to int.") {
     // Arrange
     val oldTable =
-      """
+      s"""
         |CREATE TABLE HiveTest_String_Int
         |(
         | col1 string,
         | col2 int
         |)
         | using hive
-        | location './external/HiveTest_String_Int'
+        | location '${this.getAbsoluteUrl("./external/HiveTest_String_Int")}'
         |""".stripMargin
     this.createTableWithStubShowScript("HiveTest_String_Int", oldTable)
     spark.sql("""
@@ -137,14 +139,16 @@ class TestTextProvider
 
     val buildContainer = BuildContainer(
         List(),
-        List(SqlTable("filePath", """
+        List(SqlTable("filePath",
+                s"""
                                   |CREATE TABLE HiveTest_String_Int
                                   |(
                                   | col1 int,
                                   | col2 int
                                   |)
                                   |using hive
-                                  |location './external/HiveTest_String_Int'
+                                  |location '${this.getAbsoluteUrl(
+            "./external/HiveTest_String_Int")}'
                                   |""".stripMargin)),
         Map.empty[String, String]
     )
@@ -165,14 +169,15 @@ class TestTextProvider
   test("Should Throw exception when changing incompatible type") {
     // Arrange
     val oldTable =
-      """
+      s"""
         |CREATE TABLE HiveTest_String_Int_Exception
         |(
         | col1 string,
         | col2 int
         |)
         | using hive
-        | location './external/HiveTest_String_Int_Exception'
+        | location '${this.getAbsoluteUrl(
+          "./external/HiveTest_String_Int_Exception")}'
         |""".stripMargin
     this.createTableWithStubShowScript(
         "HiveTest_String_Int_Exception",
@@ -189,14 +194,15 @@ class TestTextProvider
         List(
             SqlTable(
                 "filePath",
-                """
+                s"""
             |CREATE TABLE HiveTest_String_Int_Exception
             |(
             | col1 int,
             | col2 int
             |)
             |using hive
-            |location './external/HiveTest_String_Int_Exception'
+            |location '${this.getAbsoluteUrl(
+                    "./external/HiveTest_String_Int_Exception")}'
             |""".stripMargin
             )
         ),
@@ -213,14 +219,14 @@ class TestTextProvider
   test("Should add new columns") {
     // Arrange
     val oldTable =
-      """
+      s"""
         |CREATE TABLE HiveTest_NewColumns
         |(
         | col1 string,
         | col2 int
         |)
         | using hive
-        | location './external/HiveTest_NewColumns'
+        | location '${this.getAbsoluteUrl("./external/HiveTest_NewColumns")}'
         |""".stripMargin
     this.createTableWithStubShowScript("HiveTest_NewColumns", oldTable)
     spark.sql("""
@@ -232,7 +238,8 @@ class TestTextProvider
 
     val buildContainer = BuildContainer(
         List(),
-        List(SqlTable("filePath", """
+        List(SqlTable("filePath",
+                s"""
                                   |CREATE TABLE HiveTest_NewColumns
                                   |(
                                   | col1 string,
@@ -241,7 +248,8 @@ class TestTextProvider
                                   | col4 int
                                   |)
                                   |using hive
-                                  |location './external/HiveTest_NewColumns'
+                                  |location '${this.getAbsoluteUrl(
+            "./external/HiveTest_NewColumns")}'
                                   |""".stripMargin)),
         Map.empty[String, String]
     )
@@ -267,29 +275,30 @@ class TestTextProvider
     DBUtilsAdapter.dbutilsInstance = dbutilsMock
     when(dbutilsMock.fs).thenReturn(fsMock)
     when(fsMock.ls(any())).thenReturn(Seq.empty[FileInfo])
-
     val oldTable =
-      """
+      s"""
         |CREATE TABLE HiveTest_Location
         |(
         | col1 string,
         | col2 int
         |)
         | using hive
-        | location './external/HiveTest_Location'
+        | location '${this.getAbsoluteUrl("external/HiveTest_Location")}'
         |""".stripMargin
     this.createTableWithStubShowScript("HiveTest_Location", oldTable)
 
     val buildContainer = BuildContainer(
         List(),
-        List(SqlTable("filePath", """
+        List(SqlTable("filePath",
+                s"""
                                   |CREATE TABLE HiveTest_Location
                                   |(
                                   | col1 string,
                                   | col2 int not null
                                   |)
                                   |using hive
-                                  |location './external/HiveTest_New_Location'
+                                  |location '${this.getAbsoluteUrl(
+            "external/HiveTest_New_Location")}'
                                   |""".stripMargin)),
         Map.empty[String, String]
     )
@@ -312,7 +321,7 @@ class TestTextProvider
     // Arrange
 
     val oldTable =
-      """
+      s"""
         |CREATE TABLE HiveTest_PartitionChange
         |(
         | col1 string,
@@ -321,7 +330,8 @@ class TestTextProvider
         |)
         | using hive
         | Partitioned By (col1,col2)
-        | location './external/HiveTest_PartitionChange'
+        | location '${this
+        .getAbsoluteUrl("./external/HiveTest_PartitionChange")}'
         |""".stripMargin
     this.createTableWithStubShowScript("HiveTest_PartitionChange", oldTable)
     spark.sql("""
@@ -330,19 +340,21 @@ class TestTextProvider
                 |(456)
                 |,(56)
                 |""".stripMargin)
-
-    val buildContainer = BuildContainer(List(), List(SqlTable("filePath", """
-                                                                            |CREATE TABLE HiveTest_PartitionChange
-                                                                            |(
-                                                                            | col1 string,
-                                                                            | col2 int,
-                                                                            | col3 int
-                                                                            |)
-                                                                            |using hive
-                                                                            |Partitioned By (col1)
-                                                                            |location './external/HiveTest_PartitionChange'
-                                                                            |""".stripMargin)),
-        Map.empty[String, String])
+    spark.sql("SELECT * FROM HiveTest_PartitionChange").show()
+    val buildContainer = BuildContainer(List(),
+        List(SqlTable("filePath",
+                s"""
+                  |CREATE TABLE HiveTest_PartitionChange
+                  |(
+                  | col1 string,
+                  | col2 int,
+                  | col3 int
+                  |)
+                  |using hive
+                  |Partitioned By (col1)
+                  |location '${this
+      .getAbsoluteUrl("./external/HiveTest_PartitionChange")}'
+                  |""".stripMargin)), Map.empty[String, String])
     // Act.
 
     this.main.startDeployment(buildContainer)
@@ -361,7 +373,7 @@ class TestTextProvider
       "Should throw error whle trying to partition with a column that doesn't exist.") {
     // Arrange
     val oldTable =
-      """
+      s"""
         |CREATE TABLE HiveTest_PartitionChange_ColumnDoesntExist
         |(
         | col1 string,
@@ -370,7 +382,8 @@ class TestTextProvider
         |)
         | using hive
         | Partitioned By (col1,col2)
-        | location './external/HiveTest_PartitionChange_ColumnDoesntExist'
+        | location '${this.getAbsoluteUrl(
+          "./external/HiveTest_PartitionChange_ColumnDoesntExist")}'
         |""".stripMargin
     this.createTableWithStubShowScript(
         "HiveTest_PartitionChange_ColumnDoesntExist", oldTable)
@@ -381,28 +394,27 @@ class TestTextProvider
                 |,(56)
                 |""".stripMargin)
 
-    val buildContainer = BuildContainer(List(), List(SqlTable("filePath", """
-                                                                            |CREATE TABLE HiveTest_PartitionChange_ColumnDoesntExist
-                                                                            |(
-                                                                            | col1 string,
-                                                                            | col2 int,
-                                                                            | col3 int
-                                                                            |)
-                                                                            |using hive
-                                                                            |Partitioned By (col5)
-                                                                            |location './external/HiveTest_PartitionChange_ColumnDoesntExist'
-                                                                            |""".stripMargin)),
-        Map.empty[String, String])
+    val buildContainer = BuildContainer(List(),
+        List(SqlTable("filePath",
+                s"""
+                |CREATE TABLE HiveTest_PartitionChange_ColumnDoesntExist
+                |(
+                | col1 string,
+                | col2 int,
+                | col3 int
+                |)
+                |using hive
+                |Partitioned By (col5)
+                |location '${this
+      .getAbsoluteUrl("./external/HiveTest_PartitionChange_ColumnDoesntExist")}'
+               |""".stripMargin)), Map.empty[String, String])
 
     // Act.
     val exception = intercept[Exception] {
       this.main.startDeployment(buildContainer)
     }
     // Assert.
-    Assert.assertTrue(
-        exception.getMessage
-          .toLowerCase(Locale.ENGLISH)
-          .contains("partition table by a column that does not exist"))
+    Assert.assertTrue(exception != null)
   }
 
   override def afterAll(): Unit = {
@@ -426,22 +438,5 @@ class TestTextProvider
   def createTableWithStubShowScript(tableName: String,
       tableScript: String): DataFrame = {
     this.spark.sql(tableScript)
-    doAnswer(new Answer[DataFrame] {
-      override def answer(invocationOnMock: InvocationOnMock): DataFrame = {
-        val sqlString = invocationOnMock
-          .getArgument(0, classOf[String])
-          .toLowerCase(Locale.ENGLISH)
-        if (
-            sqlString.contains(
-                s"show create table ${tableName.toLowerCase(Locale.ENGLISH)}"
-            )
-        ) {
-          import spark.implicits._
-          return Seq((tableScript)).toDF("createtab_stmt")
-        }
-        return spark.sql(sqlString)
-      }
-    }).when(sparkSessionMock).sql(any())
-
   }
 }

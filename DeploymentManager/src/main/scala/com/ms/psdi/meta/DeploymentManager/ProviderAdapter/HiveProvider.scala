@@ -18,7 +18,7 @@ import scala.util.control.Breaks.{break, breakable}
 class HiveProviderAdapter(sparkSession: SparkSession) extends IProviderAdapter {
 
   override def deploy(newTable: TableEntity, oldTable: TableEntity): Unit = {
-    this.changeLocation(newTable, oldTable);
+    this.changeProvider(newTable, oldTable);
     this.alterSchema(newTable, oldTable);
     this.alterPartition(newTable, oldTable);
     this.changeLocation(newTable, oldTable);
@@ -27,6 +27,9 @@ class HiveProviderAdapter(sparkSession: SparkSession) extends IProviderAdapter {
   private def changeProvider(
       newTable: TableEntity, oldTable: TableEntity
   ): Unit = {
+    if (isHiveAlias(newTable.provider) == isHiveAlias(oldTable.provider)) {
+      return
+    }
     if (
         !newTable.provider.equalsIgnoreCase(
             oldTable.provider
@@ -36,6 +39,11 @@ class HiveProviderAdapter(sparkSession: SparkSession) extends IProviderAdapter {
           s"Cannot change provider from ${oldTable.provider} to ${newTable.provider}"
       )
     }
+  }
+
+  private def isHiveAlias(provider: String): Boolean = {
+    val hiveProviderAlias = List("hive", "text")
+    hiveProviderAlias.contains(provider.toLowerCase)
   }
 
   private def alterSchema(

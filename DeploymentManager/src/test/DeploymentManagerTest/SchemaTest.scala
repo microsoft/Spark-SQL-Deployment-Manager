@@ -7,11 +7,9 @@ import java.util.Locale
 
 import com.databricks.backend.daemon.dbutils.FileInfo
 import com.databricks.dbutils_v1.{DBUtilsV1, DbfsUtils}
-import com.holdenkarau.spark.testing.{DataFrameSuiteBase, SharedSparkContext}
 import com.ms.psdi.meta.DeploymentManager.{DBUtilsAdapter, Main}
 import com.ms.psdi.meta.common.{BuildContainer, JsonHelper, SqlTable}
 
-import io.delta.sql.DeltaSparkSessionExtension
 import org.apache.commons.io.FileUtils
 import org.junit.Assert
 import org.mockito.ArgumentMatchers.any
@@ -20,39 +18,19 @@ import org.mockito.invocation.InvocationOnMock
 import org.mockito.stubbing.Answer
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 import org.scalatest.mockito.MockitoSugar
-import org.apache.spark.SparkConf
 import org.apache.spark.sql.{SparkSession, _}
 import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.delta.catalog.DeltaCatalog
-import org.apache.spark.sql.internal.{SQLConf, StaticSQLConf}
-import org.apache.spark.sql.internal.StaticSQLConf.CATALOG_IMPLEMENTATION
 
-class SchemaTest
-    extends FunSuite
-    with SharedSparkContext
-    with DataFrameSuiteBase
-    with MockitoSugar
-    with BeforeAndAfterAll {
+class SchemaTest extends FunSuite with MockitoSugar with BeforeAndAfterAll {
 
-  lazy val main = Main
-  var oldTableCreateScript: String = null
+  lazy val main                           = Main
+  var oldTableCreateScript: String        = null
+  val spark                               = SharedTestSpark.getNewSession()
   lazy val sparkSessionMock: SparkSession = spy(this.spark)
 
   val sparkWarehouseDirectoryUri = "./spark-warehouse"
-  val externalDirectoryUri = "./external"
+  val externalDirectoryUri       = "./external"
   this.cleanUp()
-  override def conf: SparkConf =
-    super.conf
-      .set(
-        SQLConf.V2_SESSION_CATALOG_IMPLEMENTATION.key,
-        classOf[DeltaCatalog].getName
-      )
-      .set(
-        StaticSQLConf.SPARK_SESSION_EXTENSIONS.key,
-        classOf[DeltaSparkSessionExtension].getName
-      )
-      .set("spark.databricks.delta.schema.autoMerge.enabled", "true")
-      .set(CATALOG_IMPLEMENTATION.key, "hive")
 
   override def beforeAll(): Unit = {
     super.beforeAll()
@@ -67,8 +45,8 @@ class SchemaTest
   test("Should create new table - DELTA") {
     // Arrange.
     val buildContainer = BuildContainer(
-      List(),
-      List(SqlTable("filePath", """
+        List(),
+        List(SqlTable("filePath", """
           |CREATE TABLE new_table
           |(
           | col1 int,
@@ -77,7 +55,7 @@ class SchemaTest
           |using delta
           |location './external/new_table'
           |""".stripMargin)),
-      Map.empty[String, String]
+        Map.empty[String, String]
     )
 
     // Act.
@@ -86,32 +64,32 @@ class SchemaTest
     // Assert.
     val tableDetails = this.spark.sql("desc extended new_table")
     Assert.assertTrue(
-      tableDetails
-        .filter(x => x(0).toString().equalsIgnoreCase("Provider"))
-        .first()(1)
-        .toString
-        .equalsIgnoreCase("delta")
+        tableDetails
+          .filter(x => x(0).toString().equalsIgnoreCase("Provider"))
+          .first()(1)
+          .toString
+          .equalsIgnoreCase("delta")
     )
     Assert.assertTrue(
-      tableDetails
-        .filter(x => x(0).toString().equalsIgnoreCase("col1"))
-        .first()(1)
-        .toString
-        .equalsIgnoreCase("int")
+        tableDetails
+          .filter(x => x(0).toString().equalsIgnoreCase("col1"))
+          .first()(1)
+          .toString
+          .equalsIgnoreCase("int")
     )
     Assert.assertTrue(
-      tableDetails
-        .filter(x => x(0).toString().equalsIgnoreCase("col2"))
-        .first()(1)
-        .toString
-        .equalsIgnoreCase("string")
+        tableDetails
+          .filter(x => x(0).toString().equalsIgnoreCase("col2"))
+          .first()(1)
+          .toString
+          .equalsIgnoreCase("string")
     )
     Assert.assertTrue(
-      tableDetails
-        .filter(x => x(0).toString().equalsIgnoreCase("col2"))
-        .first()(2)
-        .toString
-        .equals("some comments here!.")
+        tableDetails
+          .filter(x => x(0).toString().equalsIgnoreCase("col2"))
+          .first()(2)
+          .toString
+          .equals("some comments here!.")
     )
   }
 
@@ -136,8 +114,8 @@ class SchemaTest
         |""".stripMargin)
 
     val buildContainer = BuildContainer(
-      List(),
-      List(SqlTable("filePath", """
+        List(),
+        List(SqlTable("filePath", """
           |CREATE TABLE SchemaTest_String_Int
           |(
           | col1 int,
@@ -146,7 +124,7 @@ class SchemaTest
           |using delta
           |location './external/SchemaTest_String_Int'
           |""".stripMargin)),
-      Map.empty[String, String]
+        Map.empty[String, String]
     )
 
     // Act.
@@ -175,8 +153,8 @@ class SchemaTest
         | location './external/SchemaTest_String_Int_Exception'
         |""".stripMargin
     this.createTableWithStubShowScript(
-      "SchemaTest_String_Int_Exception",
-      oldTable
+        "SchemaTest_String_Int_Exception",
+        oldTable
     )
     spark.sql("""
         |INSERT INTO SchemaTest_String_Int_Exception
@@ -185,11 +163,11 @@ class SchemaTest
         |,("garbage",54)
         |""".stripMargin)
     val buildContainer = BuildContainer(
-      List(),
-      List(
-        SqlTable(
-          "filePath",
-          """
+        List(),
+        List(
+            SqlTable(
+                "filePath",
+                """
           |CREATE TABLE SchemaTest_String_Int_Exception
           |(
           | col1 int,
@@ -198,9 +176,9 @@ class SchemaTest
           |using delta
           |location './external/SchemaTest_String_Int_Exception'
           |""".stripMargin
-        )
-      ),
-      Map.empty[String, String]
+            )
+        ),
+        Map.empty[String, String]
     )
 
     // Act
@@ -231,8 +209,8 @@ class SchemaTest
         |""".stripMargin)
 
     val buildContainer = BuildContainer(
-      List(),
-      List(SqlTable("filePath", """
+        List(),
+        List(SqlTable("filePath", """
           |CREATE TABLE SchemaTest_NewColumns
           |(
           | col1 string,
@@ -243,7 +221,7 @@ class SchemaTest
           |using delta
           |location './external/SchemaTest_NewColumns'
           |""".stripMargin)),
-      Map.empty[String, String]
+        Map.empty[String, String]
     )
 
     // Act.
@@ -263,7 +241,7 @@ class SchemaTest
   test("Should change location") {
     // Arrange.
     val dbutilsMock = mock[DBUtilsV1]
-    val fsMock = mock[DbfsUtils]
+    val fsMock      = mock[DbfsUtils]
     DBUtilsAdapter.dbutilsInstance = dbutilsMock
     when(dbutilsMock.fs).thenReturn(fsMock)
     when(fsMock.ls(any())).thenReturn(Seq.empty[FileInfo])
@@ -281,8 +259,8 @@ class SchemaTest
     this.createTableWithStubShowScript("SchemaTest_Location", oldTable)
 
     val buildContainer = BuildContainer(
-      List(),
-      List(SqlTable("filePath", """
+        List(),
+        List(SqlTable("filePath", """
           |CREATE TABLE SchemaTest_Location
           |(
           | col1 string,
@@ -291,7 +269,7 @@ class SchemaTest
           |using delta
           |location './external/SchemaTest_New_Location'
           |""".stripMargin)),
-      Map.empty[String, String]
+        Map.empty[String, String]
     )
 
     // Act
@@ -302,17 +280,17 @@ class SchemaTest
     val locationRow =
       tableDesc.filter(x => x(0).toString.equalsIgnoreCase("Location")).first()
     Assert.assertTrue(
-      locationRow(1).toString
-        .toLowerCase(Locale.ENGLISH)
-        .contains("external/schematest_new_location")
+        locationRow(1).toString
+          .toLowerCase(Locale.ENGLISH)
+          .contains("external/schematest_new_location")
     )
   }
 
   test("Should fail when trying to create table in database that doesn't exist") {
     // Arrange.
     val buildContainer = BuildContainer(
-      List(),
-      List(SqlTable("filePath", """
+        List(),
+        List(SqlTable("filePath", """
           |CREATE TABLE NoDatabase.SchemaTest_nodatabase
           |(
           | col1 int,
@@ -321,7 +299,7 @@ class SchemaTest
           |using delta
           |location './external/SchemaTest_nodatabase'
           |""".stripMargin)),
-      Map.empty[String, String]
+        Map.empty[String, String]
     )
     val jsonBuildContainer = JsonHelper.toJSON(buildContainer)
 
@@ -331,18 +309,18 @@ class SchemaTest
     }
 
     Assert.assertTrue(
-      exception.getMessage
-        .toLowerCase(Locale.ENGLISH)
-        .contains("database 'nodatabase' not found")
+        exception.getMessage
+          .toLowerCase(Locale.ENGLISH)
+          .contains("database 'nodatabase' not found")
     )
   }
 
   test("Should create new schema") {
     // Arrange.
     val buildContainer = BuildContainer(
-      List(SqlTable("filePAth", "CREATE SCHEMA newSchema")),
-      List(),
-      Map.empty[String, String]
+        List(SqlTable("filePAth", "CREATE SCHEMA newSchema")),
+        List(),
+        Map.empty[String, String]
     )
 
     // Act.
@@ -368,8 +346,8 @@ class SchemaTest
     this.createTableWithStubShowScript("SchemaTest_NULL_NOTNULL", oldTable)
 
     val buildContainer = BuildContainer(
-      List(),
-      List(SqlTable("filePath", """
+        List(),
+        List(SqlTable("filePath", """
           |CREATE TABLE SchemaTest_NULL_NOTNULL
           |(
           | col1 string,
@@ -378,14 +356,14 @@ class SchemaTest
           |using delta
           |location './external/SchemaTest_NULL_NOTNULL'
           |""".stripMargin)),
-      Map.empty[String, String]
+        Map.empty[String, String]
     )
 
     // Act
     this.main.startDeployment(buildContainer)
     val exception = intercept[Exception] {
       this.spark.sql(
-        """
+          """
           |INSERT INTO SchemaTest_NULL_NOTNULL values("should throw exception", null)
           |""".stripMargin
       )
@@ -406,8 +384,8 @@ class SchemaTest
         |""".stripMargin
     this.createTableWithStubShowScript("SchemaTest_DELTA_HIVE", oldTable)
     val buildContainer = BuildContainer(
-      List(),
-      List(SqlTable("filePath", """
+        List(),
+        List(SqlTable("filePath", """
           |CREATE TABLE SchemaTest_DELTA_HIVE
           |(
           | col1 string,
@@ -415,10 +393,10 @@ class SchemaTest
           |)
           |location './external/SchemaTest_DELTA_HIVE'
           |""".stripMargin)),
-      Map.empty[String, String]
+        Map.empty[String, String]
     )
     val parsePlan = this.spark.sessionState.sqlParser.parsePlan(
-      """
+        """
                                                                   |CREATE TABLE SchemaTest_DELTA_HIVE
                                                                   |(
                                                                   | col1 string,
@@ -448,17 +426,14 @@ class SchemaTest
         | location './external/SchemaTest_PartitionChange'
         |""".stripMargin
     this.createTableWithStubShowScript("SchemaTest_PartitionChange", oldTable)
-    spark.sql(
-      """
+    spark.sql("""
         |INSERT INTO SchemaTest_PartitionChange
         |values
         |("1",123, 456)
         |,("2",54, 56)
         |""".stripMargin)
 
-    val buildContainer = BuildContainer(List(),
-      List(SqlTable("filePath",
-        """
+    val buildContainer = BuildContainer(List(), List(SqlTable("filePath", """
           |CREATE TABLE SchemaTest_PartitionChange
           |(
           | col1 string,
@@ -468,17 +443,25 @@ class SchemaTest
           |using delta
           |Partitioned By (col1)
           |location './external/SchemaTest_PartitionChange'
-          |""".stripMargin))
-      , Map.empty[String, String])
+          |""".stripMargin)), Map.empty[String, String])
     // Act.
 
     this.main.startDeployment(buildContainer)
     // Assert.
-    var partitionColumns = spark.sql("DESCRIBE  EXTENDED SchemaTest_PartitionChange").toDF("col_name", "data_type", "comment").withColumn("isPartitionColumn", col("col_name").rlike("^Part [0-9]+$")).where("isPartitionColumn = true").select("data_type").collect().map(x=>x(0)).toSeq
+    var partitionColumns = spark
+      .sql("DESCRIBE  EXTENDED SchemaTest_PartitionChange")
+      .toDF("col_name", "data_type", "comment")
+      .withColumn("isPartitionColumn", col("col_name").rlike("^Part [0-9]+$"))
+      .where("isPartitionColumn = true")
+      .select("data_type")
+      .collect()
+      .map(x => x(0))
+      .toSeq
     Assert.assertTrue(partitionColumns.sameElements(Seq("col1")))
   }
 
-  test("Should throw error whle trying to partition with a column that doesn't exist.") {
+  test(
+      "Should throw error whle trying to partition with a column that doesn't exist.") {
     // Arrange
     val oldTable =
       """
@@ -492,18 +475,16 @@ class SchemaTest
         | Partitioned By (col1,col2)
         | location './external/SchemaTest_PartitionChange_ColumnDoesntExist'
         |""".stripMargin
-    this.createTableWithStubShowScript("SchemaTest_PartitionChange_ColumnDoesntExist", oldTable)
-    spark.sql(
-      """
+    this.createTableWithStubShowScript(
+        "SchemaTest_PartitionChange_ColumnDoesntExist", oldTable)
+    spark.sql("""
         |INSERT INTO SchemaTest_PartitionChange_ColumnDoesntExist
         |values
         |("1",123, 456)
         |,("2",54, 56)
         |""".stripMargin)
 
-    val buildContainer = BuildContainer(List(),
-      List(SqlTable("filePath",
-        """
+    val buildContainer = BuildContainer(List(), List(SqlTable("filePath", """
           |CREATE TABLE SchemaTest_PartitionChange_ColumnDoesntExist
           |(
           | col1 string,
@@ -513,18 +494,21 @@ class SchemaTest
           |using delta
           |Partitioned By (col5)
           |location './external/SchemaTest_PartitionChange_ColumnDoesntExist'
-          |""".stripMargin))
-      , Map.empty[String, String])
+          |""".stripMargin)), Map.empty[String, String])
 
     // Act.
     val exception = intercept[Exception] {
       this.main.startDeployment(buildContainer)
     }
     // Assert.
-    Assert.assertTrue(exception.getMessage.toLowerCase(Locale.ENGLISH).contains("partition table by a column that does not exist"))
+    Assert.assertTrue(
+        exception.getMessage
+          .toLowerCase(Locale.ENGLISH)
+          .contains("partition table by a column that does not exist"))
   }
 
-  test("Work when there is extra '/' added at the in path and work even with atypical path formats") {
+  test(
+      "Work when there is extra '/' added at the in path and work even with atypical path formats") {
     // Arrange
     val oldTable =
       """
@@ -539,9 +523,7 @@ class SchemaTest
         |""".stripMargin
     this.createTableWithStubShowScript("SchemaTest_AtypicalPath", oldTable)
 
-    val buildContainer = BuildContainer(List(),
-      List(SqlTable("filePath",
-        """
+    val buildContainer = BuildContainer(List(), List(SqlTable("filePath", """
           |CREATE TABLE SchemaTest_AtypicalPath
           |(
           | col1 string,
@@ -550,8 +532,7 @@ class SchemaTest
           |)
           |using delta
           |location './external///SchemaTest_AtypicalPath/'
-          |""".stripMargin))
-      , Map.empty[String, String])
+          |""".stripMargin)), Map.empty[String, String])
     // Act.
 
     this.main.startDeployment(buildContainer)
@@ -576,14 +557,12 @@ class SchemaTest
         |""".stripMargin
     this.createTableWithStubShowScript("SchemaOverRide_Test", oldTable)
     this.spark.sql(
-      """
+        """
         |INSERT INTO SchemaOverRide_Test values("a",12.5,1)
         |""".stripMargin
     )
 
-    val buildContainer = BuildContainer(List(),
-      List(SqlTable("filePath",
-        """
+    val buildContainer = BuildContainer(List(), List(SqlTable("filePath", """
           |CREATE TABLE SchemaOverRide_Test
           |(
           | col1 string NOT NULL,
@@ -592,12 +571,9 @@ class SchemaTest
           |)
           |using delta
           |location './external/SchemaOverRide_Test/'
-          |""".stripMargin))
-      , Map.empty[String, String])
+          |""".stripMargin)), Map.empty[String, String])
 
-    val buildContainerNew = BuildContainer(List(),
-      List(SqlTable("filePath",
-        """
+    val buildContainerNew = BuildContainer(List(), List(SqlTable("filePath", """
           |CREATE TABLE SchemaOverRide_Test
           |(
           | col1 string NOT NULL,
@@ -606,8 +582,7 @@ class SchemaTest
           |)
           |using delta
           |location './external/SchemaOverRide_Test/'
-          |""".stripMargin))
-      , Map.empty[String, String])
+          |""".stripMargin)), Map.empty[String, String])
     // Act.
 
     this.main.startDeployment(buildContainer)
@@ -618,8 +593,6 @@ class SchemaTest
     Assert.assertTrue(1 == 1)
   }
 
-
-
   override def afterAll(): Unit = {
     super.afterAll()
     this.cleanUp()
@@ -627,7 +600,7 @@ class SchemaTest
 
   def cleanUp(): Unit = {
     val sparkWarehouseDirectory = new File(sparkWarehouseDirectoryUri)
-    val externalDirectory = new File(externalDirectoryUri)
+    val externalDirectory       = new File(externalDirectoryUri)
 
     if (sparkWarehouseDirectory.exists()) {
       FileUtils.deleteDirectory(sparkWarehouseDirectory)
@@ -639,16 +612,18 @@ class SchemaTest
   }
 
   def createTableWithStubShowScript(tableName: String,
-                                    tableScript: String): DataFrame = {
+      tableScript: String): DataFrame = {
     this.spark.sql(tableScript)
     doAnswer(new Answer[DataFrame] {
       override def answer(invocationOnMock: InvocationOnMock): DataFrame = {
         val sqlString = invocationOnMock
           .getArgument(0, classOf[String])
           .toLowerCase(Locale.ENGLISH)
-        if (sqlString.contains(
-              s"show create table ${tableName.toLowerCase(Locale.ENGLISH)}"
-            )) {
+        if (
+            sqlString.contains(
+                s"show create table ${tableName.toLowerCase(Locale.ENGLISH)}"
+            )
+        ) {
           import spark.implicits._
           return Seq((tableScript)).toDF("createtab_stmt")
         }
