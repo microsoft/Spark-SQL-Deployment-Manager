@@ -90,12 +90,12 @@
         <sourceDirectory>src/main/scala</sourceDirectory>
         <testSourceDirectory>src/test</testSourceDirectory>
         <resources>
-          <resource>
-            <directory>resources</directory>
-            <includes>
-              <include>*.conf</include>
-            </includes>
-          </resource>
+            <resource>
+                <directory>resources</directory>
+                <includes>
+                    <include>*.conf</include>
+                </includes>
+            </resource>
         </resources>
         <plugins>
             <plugin>

@@ -13,12 +13,12 @@ trait SparkConfig {
 
 object SparkConfig extends SparkConfig {
   override def run(implicit sparkSession: SparkSession): Unit = {
-    val config = ConfigFactory.load("Config")
-    val keyAdls = config.getString("CONFIG.ADLS_ID")
+    val config            = ConfigFactory.load("Config")
+    val keyAdls           = config.getString("CONFIG.ADLS_ID")
     val credendentialAdls = config.getString("CONFIG.ADLS_CREDENTIAL")
-    val adlsLoginUrl = config.getString("CONFIG.ADLS_LOGIN_URL")
-    val databrickScope = config.getString("CONFIG.DATABRICKS_SCOPE")
-    val dbutils = DBUtilsAdapter.get()
+    val adlsLoginUrl      = config.getString("CONFIG.ADLS_LOGIN_URL")
+    val databrickScope    = config.getString("CONFIG.DATABRICKS_SCOPE")
+    val dbutils           = DBUtilsAdapter.get()
 
     val decryptedADLSId = dbutils.secrets
       .get(scope = databrickScope, key = keyAdls)
@@ -35,20 +35,20 @@ object SparkConfig extends SparkConfig {
     sparkSession.conf
       .set(s"fs.azure.account.auth.type.dfs.core.windows.net", "OAuth")
     sparkSession.conf.set(
-      s"fs.azure.account.oauth.provider.type.dfs.core.windows.net",
-      "org.apache.hadoop.fs.azurebfs.oauth2.ClientCredsTokenProvider"
+        s"fs.azure.account.oauth.provider.type.dfs.core.windows.net",
+        "org.apache.hadoop.fs.azurebfs.oauth2.ClientCredsTokenProvider"
     )
     sparkSession.conf.set(
-      s"fs.azure.account.oauth2.client.id.dfs.core.windows.net",
-      decryptedADLSId
+        s"fs.azure.account.oauth2.client.id.dfs.core.windows.net",
+        decryptedADLSId
     )
     sparkSession.conf.set(
-      s"fs.azure.account.oauth2.client.secret.dfs.core.windows.net",
-      decryptedADLSCredential
+        s"fs.azure.account.oauth2.client.secret.dfs.core.windows.net",
+        decryptedADLSCredential
     )
     sparkSession.conf.set(
-      s"fs.azure.account.oauth2.client.endpoint.dfs.core.windows.net",
-      adlsLoginUrl
+        s"fs.azure.account.oauth2.client.endpoint.dfs.core.windows.net",
+        adlsLoginUrl
     )
     sparkSession.conf
       .set(s"fs.azure.createRemoteFileSystemDuringInitialization", "false")
@@ -57,12 +57,13 @@ object SparkConfig extends SparkConfig {
     sparkSession.conf
       .set("spark.databricks.delta.merge.joinBasedMerge.enabled", "true")
     sparkSession.conf.set("spark.sql.crossJoin.enabled", "true")
+    sparkSession.conf.set("hive.exec.dynamic.partition.mode", "nonstrict")
 
     sparkSession.sparkContext.hadoopConfiguration
       .set("fs.azure.account.auth.type", "OAuth")
     sparkSession.sparkContext.hadoopConfiguration.set(
-      "fs.azure.account.oauth.provider.type",
-      "org.apache.hadoop.fs.azurebfs.oauth2.ClientCredsTokenProvider"
+        "fs.azure.account.oauth.provider.type",
+        "org.apache.hadoop.fs.azurebfs.oauth2.ClientCredsTokenProvider"
     )
     sparkSession.sparkContext.hadoopConfiguration
       .set("fs.azure.account.oauth2.client.id", decryptedADLSId)
