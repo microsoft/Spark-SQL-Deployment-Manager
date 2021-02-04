@@ -24,19 +24,18 @@ class DeployTable(sparkSession: SparkSession) {
       sparkSession.sql(table.sqlString)
       return
     }
-
     val oldTableCreateScript = this.sparkSession
       .sql(s"show create table ${tableEntity.name}")
       .first()
       .getAs[String](0)
     val oldTableEntity = getTableEntityFromScript(oldTableCreateScript)
     var providerAdapter = ProviderAdapterFactory.getProviderAdapter(
-      oldTableEntity.provider.toLowerCase(Locale.ENGLISH)
+        oldTableEntity.provider.toLowerCase(Locale.ENGLISH)
     )(this.sparkSession)
 
     this.sparkSession.sql(s"desc extended ${tableEntity.name}").show()
     val providerAdapterFactory = ProviderAdapterFactory.getProviderAdapter(
-      tableEntity.provider.toLowerCase(Locale.ENGLISH)
+        tableEntity.provider.toLowerCase(Locale.ENGLISH)
     )
     providerAdapter = providerAdapterFactory(this.sparkSession)
 
@@ -45,30 +44,30 @@ class DeployTable(sparkSession: SparkSession) {
   }
 
   private def getTableEntityFromScript(script: String): TableEntity = {
-    val plan = sparkSession.sessionState.sqlParser.parsePlan(script)
+    val plan      = sparkSession.sessionState.sqlParser.parsePlan(script)
     val className = plan.getClass.getName
     return className match {
       case "org.apache.spark.sql.catalyst.plans.logical.CreateTableStatement" =>
         val table = plan.asInstanceOf[
-          org.apache.spark.sql.catalyst.plans.logical.CreateTableStatement
+            org.apache.spark.sql.catalyst.plans.logical.CreateTableStatement
         ]
         TableEntity(
-          table.tableName.mkString("."),
-          table.provider.get,
-          if (table.location.isEmpty) null else table.location.get,
-          table.tableSchema.fields
-            .map(x => {
-              SqlTableField(
-                x.name,
-                x.dataType.typeName,
-                x.nullable,
-                JsonHelper.fromJSON[Map[String, JValue]](x.metadata.json)
-              )
-            })
-            .toList,
-          // partitions are of type Seq[org.apache.spark.sql.connector.expressions.Transform] and the column name is present in "describe" member field
-          table.partitioning.map(x => x.describe),
-          script
+            table.tableName.mkString("."),
+            table.provider.get,
+            if (table.location.isEmpty) null else table.location.get,
+            table.tableSchema.fields
+              .map(x => {
+                SqlTableField(
+                    x.name,
+                    x.dataType.typeName,
+                    x.nullable,
+                    JsonHelper.fromJSON[Map[String, JValue]](x.metadata.json)
+                )
+              })
+              .toList,
+            // partitions are of type Seq[org.apache.spark.sql.connector.expressions.Transform] and the column name is present in "describe" member field
+            table.partitioning.map(x => x.describe),
+            script
         )
 
       case "org.apache.spark.sql.execution.datasources.CreateTable" =>
@@ -80,21 +79,21 @@ class DeployTable(sparkSession: SparkSession) {
         }
         tableName.add(table.tableDesc.identifier.table)
         TableEntity(
-          tableName.toArray.mkString("."),
-          table.tableDesc.provider.get,
-          table.tableDesc.location.getPath,
-          table.tableDesc.schema.fields
-            .map(x => {
-              SqlTableField(
-                x.name,
-                x.dataType.typeName,
-                x.nullable,
-                JsonHelper.fromJSON[Map[String, JValue]](x.metadata.json)
-              )
-            })
-            .toList,
-          table.tableDesc.partitionColumnNames.asInstanceOf[Seq[String]],
-          script
+            tableName.toArray.mkString("."),
+            table.tableDesc.provider.get,
+            table.tableDesc.location.getPath,
+            table.tableDesc.schema.fields
+              .map(x => {
+                SqlTableField(
+                    x.name,
+                    x.dataType.typeName,
+                    x.nullable,
+                    JsonHelper.fromJSON[Map[String, JValue]](x.metadata.json)
+                )
+              })
+              .toList,
+            table.tableDesc.partitionColumnNames.asInstanceOf[Seq[String]],
+            script
         )
 
     }
@@ -104,9 +103,8 @@ class DeployTable(sparkSession: SparkSession) {
     this.sparkSession.catalog.tableExists(tableName)
   }
 
-  private def setNullableStateOfColumn(df: DataFrame,
-                                       cn: String,
-                                       nullable: Boolean): DataFrame = {
+  private def setNullableStateOfColumn(df: DataFrame, cn: String,
+      nullable: Boolean): DataFrame = {
     // get schema
     val schema = df.schema
     // modify [[StructField] with name `cn`

@@ -7,10 +7,15 @@ import java.util.Locale
 
 import com.databricks.backend.daemon.dbutils.FileInfo
 import com.databricks.dbutils_v1.{DBUtilsV1, DbfsUtils}
+import com.holdenkarau.spark.testing.{DataFrameSuiteBase, SharedSparkContext}
 import com.ms.psdi.meta.DeploymentManager.{DBUtilsAdapter, Main}
 import com.ms.psdi.meta.common.{BuildContainer, SqlTable}
+import io.delta.sql.DeltaSparkSessionExtension
 import org.apache.commons.io.FileUtils
 import org.apache.hadoop.fs.Path
+import org.apache.spark.SparkConf
+import org.apache.spark.sql.delta.catalog.DeltaCatalog
+import org.apache.spark.sql.internal.{SQLConf, StaticSQLConf}
 import org.junit.Assert
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito._
@@ -19,12 +24,25 @@ import org.scalatest.mockito.MockitoSugar
 import org.apache.spark.sql.{SparkSession, _}
 
 class TestTextProvider
-    extends FunSuite with MockitoSugar with BeforeAndAfterAll {
+    extends FunSuite with SharedSparkContext with DataFrameSuiteBase
+    with MockitoSugar with BeforeAndAfterAll {
 
-  lazy val main                           = Main
-  var oldTableCreateScript: String        = null
-  val spark                               = SharedTestSpark.getNewSession()
-  lazy val sparkSessionMock: SparkSession = spy(this.spark)
+  lazy val main                    = Main
+  var oldTableCreateScript: String = null
+  override def conf: SparkConf =
+    super.conf
+      .set(
+          SQLConf.V2_SESSION_CATALOG_IMPLEMENTATION.key,
+          classOf[DeltaCatalog].getName
+      )
+      .set(
+          StaticSQLConf.SPARK_SESSION_EXTENSIONS.key,
+          classOf[DeltaSparkSessionExtension].getName
+      )
+      .set("spark.databricks.delta.schema.autoMerge.enabled", "true")
+      .set("spark.sql.catalogImplementation", "hive")
+      .set("hive.exec.dynamic.partition.mode", "nonstrict")
+  override def enableHiveSupport = true
 
   val sparkWarehouseDirectoryUri = "./spark-warehouse"
   val externalDirectoryUri       = "./external"
@@ -33,14 +51,14 @@ class TestTextProvider
 
   override def beforeAll(): Unit = {
     super.beforeAll()
-
+    lazy val sparkSessionMock: SparkSession = spy(this.spark)
     // mock shared spark for testing.
     this.spark.sql("select 1 as a")
-    main.getSparkSession = () => {
-      this.sparkSessionMock
-    }
     spark.sql(
         "CREATE TABLE init_hive (a int) using hive location './external/init_hive'")
+    main.getSparkSession = () => {
+      this.spark
+    }
   }
 
   def getParentUrl(): String = {

@@ -15,13 +15,12 @@ import com.ms.psdi.meta.common.{BuildContainer, JsonHelper, SqlTable}
 import org.apache.spark.sql.SparkSession
 
 object Main {
-  lazy val sparkSession = this.getSparkSession()
+  var sparkSession: SparkSession = _
   def main(args: Array[String]): Unit = {
     if (args.length != 1) {
       throw new Exception("Invalid number of arguments")
     }
-
-    val jsonPath: String = args(0)
+    val jsonPath: String   = args(0)
     val jsonString: String = Source.fromFile(jsonPath).mkString
     var buildContainer: BuildContainer =
       JsonHelper.fromJSON[BuildContainer](jsonString)
@@ -30,6 +29,7 @@ object Main {
   }
 
   def startDeployment(buildContainer: BuildContainer): Unit = {
+    this.sparkSession = this.getSparkSession()
     // Deploy Schema.
     lazy val deploySchema = new DeploySchema(this.sparkSession)
     buildContainer.schemas.foreach(schema => {

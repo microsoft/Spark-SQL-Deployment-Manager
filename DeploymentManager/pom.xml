@@ -55,19 +55,11 @@
         </dependency>
 
         <!-- TEST DEPENDENCIES -->
-        <!-- https://mvnrepository.com/artifact/org.scalacheck/scalacheck -->
+        <!-- https://mvnrepository.com/artifact/com.holdenkarau/spark-testing-base -->
         <dependency>
-            <groupId>org.scalacheck</groupId>
-            <artifactId>scalacheck_2.13</artifactId>
-            <version>1.14.0</version>
-            <scope>test</scope>
-        </dependency>
-
-        <!-- https://mvnrepository.com/artifact/org.scalatest/scalatest -->
-        <dependency>
-            <groupId>org.scalatest</groupId>
-            <artifactId>scalatest_2.12</artifactId>
-            <version>3.0.5</version>
+            <groupId>com.holdenkarau</groupId>
+            <artifactId>spark-testing-base_2.12</artifactId>
+            <version>2.4.5_0.14.0</version>
             <scope>test</scope>
         </dependency>
 
@@ -93,26 +85,17 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- https://mvnrepository.com/artifact/junit/junit -->
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.12</version>
-            <scope>test</scope>
-        </dependency>
-
-
     </dependencies>
     <build>
         <sourceDirectory>src/main/scala</sourceDirectory>
         <testSourceDirectory>src/test</testSourceDirectory>
         <resources>
-          <resource>
-            <directory>resources</directory>
-            <includes>
-              <include>*.conf</include>
-            </includes>
-          </resource>
+            <resource>
+                <directory>resources</directory>
+                <includes>
+                    <include>*.conf</include>
+                </includes>
+            </resource>
         </resources>
         <plugins>
             <plugin>
@@ -209,11 +192,6 @@
                 <groupId>org.scalatest</groupId>
                 <artifactId>scalatest-maven-plugin</artifactId>
                 <version>1.0</version>
-                <configuration>
-                    <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
-                    <junitxml>.</junitxml>
-                    <filereports>WDF TestSuite.txt</filereports>
-                </configuration>
                 <executions>
                     <execution>
                         <id>test</id>
