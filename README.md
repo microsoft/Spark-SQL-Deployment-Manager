@@ -1,5 +1,6 @@
 [![Build Status](https://microsoftit.visualstudio.com/OneITVSO/_apis/build/status/Compliant/Core%20Services%20Engineering%20and%20Operations/Corporate%20Functions%20Engineering/Professional%20Services/PS%20Data%20And%20Insights/Data%20and%20Integration%20Platforms/PSDI%20Data%20Processing/PS-OMI-DAIP-DProc-MtStr-MetaStore_Build?repoName=microsoft%2FSpark-SQL-Deployment-Manager&branchName=main)](https://microsoftit.visualstudio.com/OneITVSO/_build/latest?definitionId=29958&repoName=microsoft%2FSpark-SQL-Deployment-Manager&branchName=main)
 [![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/microsoft/Spark-SQL-Deployment-Manager/blob/main/LICENSE)
+[![codecov](https://codecov.io/gh/microsoft/Spark-SQL-Deployment-Manager/branch/main/graphs/badge.svg?branch=main)](https://codecov.io/gh/microsoft/Spark-SQL-Deployment-Manager)
 ## Overview
   - Build and deploy a project with Spark SQL schema and tables incrementally.
   - Checks for syntax errors using Continuous Integration, preventing incorrect table schema from being merged to deployment branch.  
