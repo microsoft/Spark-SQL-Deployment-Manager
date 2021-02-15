@@ -7,6 +7,19 @@
     <groupId>com.ms.psdi.meta</groupId>
     <artifactId>DeploymentManager</artifactId>
     <version>0.0.1-SNAPSHOT</version>
+    <properties>
+<!--        <scala.version>2.12.8</scala.version>-->
+
+<!--        <junit.version>4.12</junit.version>-->
+
+        <compiler.plugin.version>3.8.0</compiler.plugin.version>
+        <project-info-reports.plugin.version>3.0.0</project-info-reports.plugin.version>
+        <site.plugin.version>3.7.1</site.plugin.version>
+        <surefire.plugin.version>2.22.1</surefire.plugin.version>
+
+        <scala.plugin.version>3.2.2</scala.plugin.version>
+        <scoverage.plugin.version>1.4.0</scoverage.plugin.version>
+    </properties>
 
     <name>DeploymentManager</name>
     <packaging>jar</packaging>
@@ -138,7 +151,7 @@
                 <artifactId>maven-install-plugin</artifactId>
                 <version>2.5.2</version>
                 <configuration>
-                    <skip>true</skip>
+                    <skip>false</skip>
                 </configuration>
             </plugin>
             <plugin>
@@ -192,6 +205,9 @@
                 <groupId>org.scalatest</groupId>
                 <artifactId>scalatest-maven-plugin</artifactId>
                 <version>1.0</version>
+                <configuration>
+                    <skipTests>false</skipTests>
+                </configuration>
                 <executions>
                     <execution>
                         <id>test</id>
@@ -201,7 +217,6 @@
                     </execution>
                 </executions>
             </plugin>
-
             <plugin>
                 <groupId>org.scalastyle</groupId>
                 <artifactId>scalastyle-maven-plugin</artifactId>
@@ -224,6 +239,35 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.scoverage</groupId>
+                <artifactId>scoverage-maven-plugin</artifactId>
+                <version>${scoverage.plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>coverage</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <excludedFiles>.*Object</excludedFiles>
+                    <scalaVersion>2.12.12</scalaVersion>
+                    <highlighting>true</highlighting>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
+    <reporting>
+        <outputDirectory>target/site</outputDirectory>
+        <plugins>
+            <plugin>
+                <groupId>org.scoverage</groupId>
+                <artifactId>scoverage-maven-plugin</artifactId>
+                <version>${scoverage.plugin.version}</version>
+            </plugin>
+        </plugins>
+    </reporting>
 </project>
