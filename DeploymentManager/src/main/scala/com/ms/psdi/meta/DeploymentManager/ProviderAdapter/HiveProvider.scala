@@ -6,8 +6,8 @@ import java.io.FileNotFoundException
 import java.net.URI
 import java.util.UUID.randomUUID
 
-import com.ms.psdi.meta.DeploymentManager.DBUtilsAdapter
 import com.ms.psdi.meta.DeploymentManager.Models.{SqlTableField, TableEntity}
+import com.ms.psdi.meta.DeploymentManager.SynapseUtilsAdapter
 import javax.ws.rs.NotSupportedException
 import net.liftweb.json.{DefaultFormats, Formats}
 import org.apache.spark.sql.SparkSession
@@ -209,7 +209,7 @@ class HiveProviderAdapter(sparkSession: SparkSession) extends IProviderAdapter {
           .equalsIgnoreCase(oldNormalizedPath.toString())
     ) {
       try {
-        val files = DBUtilsAdapter.get.fs.ls(newTable.location)
+        val files = SynapseUtilsAdapter.getFs().ls(newTable.location)
         if (files.length != 0) {
           throw new Exception(s"location ${newTable.location} is not empty.")
         }

@@ -5,26 +5,26 @@ package DeploymentManagerTest
 import java.io.File
 import java.util.Locale
 
-import com.databricks.backend.daemon.dbutils.FileInfo
-import com.databricks.dbutils_v1.{DBUtilsV1, DbfsUtils}
+//import com.databricks.backend.daemon.dbutils.FileInfo
+//import com.databricks.dbutils_v1.{DBUtilsV1, DbfsUtils}
 import com.holdenkarau.spark.testing.{DataFrameSuiteBase, SharedSparkContext}
-import com.ms.psdi.meta.DeploymentManager.{DBUtilsAdapter, Main}
+//import com.ms.psdi.meta.DeploymentManager.{DBUtilsAdapter, Main}
+import com.ms.psdi.meta.DeploymentManager.Main
 import com.ms.psdi.meta.common.{BuildContainer, JsonHelper, SqlTable}
 import io.delta.sql.DeltaSparkSessionExtension
 import org.apache.commons.io.FileUtils
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.delta.catalog.DeltaCatalog
+import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.internal.{SQLConf, StaticSQLConf}
+import org.apache.spark.sql.{SparkSession, _}
 import org.junit.Assert
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito._
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.stubbing.Answer
-import org.scalatest.{BeforeAndAfterAll, FunSuite}
 import org.scalatest.mockito.MockitoSugar
-import org.apache.spark.sql.{SparkSession, _}
-import org.apache.spark.sql.functions.col
-import org.apache.spark.sql.internal.{SQLConf, StaticSQLConf}
-import org.apache.spark.sql.internal.StaticSQLConf.CATALOG_IMPLEMENTATION
+import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
 class SchemaTest
     extends FunSuite with SharedSparkContext with DataFrameSuiteBase
@@ -258,53 +258,53 @@ class SchemaTest
     Assert.assertTrue(col4DataTypeInfo(1).toString.equalsIgnoreCase("int"))
   }
 
-  test("Should change location") {
-    // Arrange.
-    val dbutilsMock = mock[DBUtilsV1]
-    val fsMock      = mock[DbfsUtils]
-    DBUtilsAdapter.dbutilsInstance = dbutilsMock
-    when(dbutilsMock.fs).thenReturn(fsMock)
-    when(fsMock.ls(any())).thenReturn(Seq.empty[FileInfo])
-
-    val oldTable =
-      """
-        |CREATE TABLE SchemaTest_Location
-        |(
-        | col1 string,
-        | col2 int
-        |)
-        | using delta
-        | location './external/SchemaTest_Location'
-        |""".stripMargin
-    this.createTableWithStubShowScript("SchemaTest_Location", oldTable)
-
-    val buildContainer = BuildContainer(
-        List(),
-        List(SqlTable("filePath", """
-          |CREATE TABLE SchemaTest_Location
-          |(
-          | col1 string,
-          | col2 int not null
-          |)
-          |using delta
-          |location './external/SchemaTest_New_Location'
-          |""".stripMargin)),
-        Map.empty[String, String]
-    )
-
-    // Act
-    this.main.startDeployment(buildContainer)
-
-    // Assert.
-    val tableDesc = this.spark.sql("desc extended SchemaTest_Location")
-    val locationRow =
-      tableDesc.filter(x => x(0).toString.equalsIgnoreCase("Location")).first()
-    Assert.assertTrue(
-        locationRow(1).toString
-          .toLowerCase(Locale.ENGLISH)
-          .contains("external/schematest_new_location")
-    )
-  }
+//  ignore("Should change location") {
+//    // Arrange.
+//    val dbutilsMock = mock[DBUtilsV1]
+//    val fsMock      = mock[DbfsUtils]
+//    DBUtilsAdapter.dbutilsInstance = dbutilsMock
+//    when(dbutilsMock.fs).thenReturn(fsMock)
+//    when(fsMock.ls(any())).thenReturn(Seq.empty[FileInfo])
+//
+//    val oldTable =
+//      """
+//        |CREATE TABLE SchemaTest_Location
+//        |(
+//        | col1 string,
+//        | col2 int
+//        |)
+//        | using delta
+//        | location './external/SchemaTest_Location'
+//        |""".stripMargin
+//    this.createTableWithStubShowScript("SchemaTest_Location", oldTable)
+//
+//    val buildContainer = BuildContainer(
+//        List(),
+//        List(SqlTable("filePath", """
+//          |CREATE TABLE SchemaTest_Location
+//          |(
+//          | col1 string,
+//          | col2 int not null
+//          |)
+//          |using delta
+//          |location './external/SchemaTest_New_Location'
+//          |""".stripMargin)),
+//        Map.empty[String, String]
+//    )
+//
+//    // Act
+//    this.main.startDeployment(buildContainer)
+//
+//    // Assert.
+//    val tableDesc = this.spark.sql("desc extended SchemaTest_Location")
+//    val locationRow =
+//      tableDesc.filter(x => x(0).toString.equalsIgnoreCase("Location")).first()
+//    Assert.assertTrue(
+//        locationRow(1).toString
+//          .toLowerCase(Locale.ENGLISH)
+//          .contains("external/schematest_new_location")
+//    )
+//  }
 
   test("Should fail when trying to create table in database that doesn't exist") {
     // Arrange.

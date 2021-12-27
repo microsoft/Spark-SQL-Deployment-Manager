@@ -2,9 +2,8 @@
 // Licensed under the MIT License.
 package com.ms.psdi.meta.DeploymentManager.Config
 
-import com.ms.psdi.meta.DeploymentManager.DBUtilsAdapter
+import com.ms.psdi.meta.DeploymentManager.SynapseUtilsAdapter
 import com.typesafe.config.ConfigFactory
-
 import org.apache.spark.sql.SparkSession
 
 trait SparkConfig {
@@ -17,13 +16,12 @@ object SparkConfig extends SparkConfig {
     val keyAdls           = config.getString("CONFIG.ADLS_ID")
     val credendentialAdls = config.getString("CONFIG.ADLS_CREDENTIAL")
     val adlsLoginUrl      = config.getString("CONFIG.ADLS_LOGIN_URL")
-    val databrickScope    = config.getString("CONFIG.DATABRICKS_SCOPE")
-    val dbutils           = DBUtilsAdapter.get()
+    val akvName           = config.getString("ENVCONFIG.AKV_NAME")
+    val linkedServiceName = config.getString("ENVCONFIG.LINKED_SERVICE_NAME")
+    val mssparkCreds = SynapseUtilsAdapter.getCreds()
 
-    val decryptedADLSId = dbutils.secrets
-      .get(scope = databrickScope, key = keyAdls)
-    val decryptedADLSCredential = dbutils.secrets
-      .get(scope = databrickScope, key = credendentialAdls)
+    val decryptedADLSId = mssparkCreds.getSecret(akvName,keyAdls,linkedServiceName)
+    val decryptedADLSCredential = mssparkCreds.getSecret(akvName,credendentialAdls,linkedServiceName)
 
     // Set Spark Config.
     sparkSession.conf

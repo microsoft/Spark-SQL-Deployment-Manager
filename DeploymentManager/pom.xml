@@ -44,11 +44,12 @@
             <artifactId>scala-async_2.12</artifactId>
             <version>1.0.0-M1</version>
         </dependency>
+
+        <!-- https://mvnrepository.com/artifact/com.microsoft.azure.synapse/synapseutils -->
         <dependency>
-            <groupId>com.databricks</groupId>
-            <artifactId>dbutils-api_2.11</artifactId>
-            <version>0.0.4</version>
-            <scope>provided</scope>
+            <groupId>com.microsoft.azure.synapse</groupId>
+            <artifactId>synapseutils_2.12</artifactId>
+            <version>1.3</version>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/com.typesafe/config -->
