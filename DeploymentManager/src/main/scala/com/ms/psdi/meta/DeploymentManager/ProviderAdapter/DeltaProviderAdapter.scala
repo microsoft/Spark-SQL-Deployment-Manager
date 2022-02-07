@@ -195,7 +195,8 @@ class DeltaProviderAdapter(sparkSession: SparkSession)
       val tempTable  = s"${newTable.name}_$randomGuid"
       this.sparkSession
         .sql(s"ALTER TABLE ${newTable.name} RENAME TO $tempTable")
-      this.sparkSession.sql(newTable.script)
+      if(newTable.script isDefined)
+        this.sparkSession.sql(newTable.script.getOrElse(""))
       val commaSeparatedColumns = newTable.schema.map(x => x.name).mkString(",")
       this.sparkSession.sql(s"""
            |INSERT INTO ${newTable.name}

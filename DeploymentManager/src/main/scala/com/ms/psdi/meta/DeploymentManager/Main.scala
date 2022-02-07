@@ -2,30 +2,35 @@
 // Licensed under the MIT License.
 package com.ms.psdi.meta.DeploymentManager
 
-import scala.async.Async.async
-import scala.collection.mutable.ListBuffer
-import scala.concurrent.{Await, Future}
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.DurationInt
-import scala.io.Source
+import java.nio.file.Paths
 
 import com.ms.psdi.meta.DeploymentManager.Config.SparkConfig
 import com.ms.psdi.meta.common.{BuildContainer, JsonHelper, SqlTable}
-
 import org.apache.spark.sql.SparkSession
+
+import scala.async.Async.async
+import scala.collection.mutable.ListBuffer
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.DurationInt
+import scala.concurrent.{Await, Future}
 
 object Main {
   var sparkSession: SparkSession = _
   def main(args: Array[String]): Unit = {
+    //    val input_file = "build_file.json"
+    //    val jsonString: String = Source.fromResource(input_file).mkString
     if (args.length != 1) {
       throw new Exception("Invalid number of arguments")
     }
+
     val jsonPath: String   = args(0)
-    val jsonString: String = Source.fromFile(jsonPath).mkString
+    val p = Paths.get(jsonPath).toAbsolutePath.toString;
+    val jsonString = scala.io.Source.fromFile(p).mkString
+
     var buildContainer: BuildContainer =
       JsonHelper.fromJSON[BuildContainer](jsonString)
     buildContainer = this.fillValues(buildContainer)
-    this.startDeployment(buildContainer)
+     this.startDeployment(buildContainer)
   }
 
   def startDeployment(buildContainer: BuildContainer): Unit = {
