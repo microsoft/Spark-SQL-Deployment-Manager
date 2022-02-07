@@ -6,8 +6,8 @@ import java.io.FileNotFoundException
 import java.net.URI
 import java.util.UUID.randomUUID
 
-import com.ms.psdi.meta.DeploymentManager.DBUtilsAdapter
 import com.ms.psdi.meta.DeploymentManager.Models.{SqlTableField, TableEntity}
+import com.ms.psdi.meta.DeploymentManager.SynapseUtilsAdapter
 import javax.ws.rs.NotSupportedException
 import net.liftweb.json.{DefaultFormats, Formats}
 import org.apache.spark.sql.SparkSession
@@ -180,7 +180,7 @@ class DeltaProviderAdapter(sparkSession: SparkSession)
           .equalsIgnoreCase(oldNormalizedPath.toString())
     ) {
       try {
-        val files = DBUtilsAdapter.get.fs.ls(newTable.location)
+        val files = SynapseUtilsAdapter.getFs().ls(newTable.location)
         if (files.length != 0) {
           throw new Exception(s"location ${newTable.location} is not empty.")
         }
@@ -195,7 +195,8 @@ class DeltaProviderAdapter(sparkSession: SparkSession)
       val tempTable  = s"${newTable.name}_$randomGuid"
       this.sparkSession
         .sql(s"ALTER TABLE ${newTable.name} RENAME TO $tempTable")
-      this.sparkSession.sql(newTable.script)
+      if(newTable.script isDefined)
+        this.sparkSession.sql(newTable.script.getOrElse(""))
       val commaSeparatedColumns = newTable.schema.map(x => x.name).mkString(",")
       this.sparkSession.sql(s"""
            |INSERT INTO ${newTable.name}
