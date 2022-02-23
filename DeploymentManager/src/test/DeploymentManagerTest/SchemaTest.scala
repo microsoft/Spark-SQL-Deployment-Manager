@@ -613,6 +613,40 @@ class SchemaTest
     Assert.assertTrue(1 == 1)
   }
 
+  test("Column with special characters should not fail") {
+
+    // Arrange.
+    val buildContainer = BuildContainer(
+      List(),
+      List(SqlTable("filePath","""
+                                 |CREATE TABLE specialChars
+                                 |( `col?_$` string NOT NULL, col2 int not null)
+                                 |using delta
+                                 |""".stripMargin)),
+      Map.empty[String, String]
+    )
+
+    // Act.
+    this.main.startDeployment(buildContainer)
+
+    // Assert.
+    val tableDetails = this.spark.sql("desc extended specialChars")
+    Assert.assertTrue(
+      tableDetails
+        .filter(x => x(0).toString().equalsIgnoreCase("col?_$"))
+        .first()(1)
+        .toString
+        .equalsIgnoreCase("string")
+    )
+    Assert.assertTrue(
+      tableDetails
+        .filter(x => x(0).toString().equalsIgnoreCase("col2"))
+        .first()(1)
+        .toString
+        .equalsIgnoreCase("int")
+    )
+  }
+
   override def afterAll(): Unit = {
     super.afterAll()
     this.cleanUp()
